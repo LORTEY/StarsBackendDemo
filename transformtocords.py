@@ -43,25 +43,50 @@ def dataClear(path):
             cleared.append(entry.split(","))
     return cleared[1:len(cleared)] #wywala wiersz do opisywania danych w tabeli
 
-def segmentSave(saved, SegmentSize): #saved czyli koordynaty x y z do zapisania musi być zapisane także magnitudo i nazwa gwiazdy, SegmentSize wielkość jednego bloku zapisu w Pc
+def segmentSave(saved, SegmentSize, SegmentMinimalEntries): #saved czyli koordynaty x y z do zapisania musi być zapisane także magnitudo i nazwa gwiazdy, SegmentSize wielkość jednego bloku zapisu w Pc
     
+    segments = {}
+    cords = []
     #ułomny algorytm radzę się nie inspirować jutro zobaczę czy usprawnia obliczenia jak tylko znajdę większy set gwiazd
     newpath = os.path.join(os.path.dirname(__file__),"Segments")
     if not os.path.exists(newpath):
         os.makedirs(newpath)
     i = 0   
     for entry in saved:
-        if i% 300000==0:
-            print(i/300000)
+        if i% 30000==0:
+            print(i/30000)
         #ustalenie segmentu do którego przynależą dane koordynaty
         x = int(int(entry[0] - entry[0]%SegmentSize) / SegmentSize)
         y = int(int(entry[1] - entry[1]%SegmentSize) / SegmentSize)
         z = int(int(entry[2] - entry[2]%SegmentSize) / SegmentSize)
-        i+=1
         name = (str(hex(x))+"."+str(hex(y))+"."+str(hex(z))).replace("0x","")+".csv"#zamiana numeru segmentu na hex i usunięcie 0x kolejne wartości oddzielone "." mogą być ujemne
-        f = open(os.path.join(newpath,name),'a')
-        f.write(str(entry).replace(", ",",")+"\n")
-        
+        if name not in segments:
+            segments[name] = [[entry[0],entry[1],entry[2]]]
+        else:
+            segments[name].append([entry[0],entry[1],entry[2]])
+        i+=1
+    i = 0
+    other=""
+    for segment in segments:
+        if i% 30000==0:
+            print(i/30000)
+        if len(segments[segment]) > SegmentMinimalEntries:
+            f = open(os.path.join(newpath,segment),'w')
+            current = ""
+            for j in segments[segment]:
+                if i% 30000==0:
+                    print(i/30000)
+                current+=str(j[0])+","+str(j[1])+","+str(j[2])+"\n"
+                i+=1
+            f.write(current)
+            f.close()
+        else:
+            other+=str(segments[segment][0][0])+","+str(segments[segment][0][1])+","+str(segments[segment][0][2])+"\n"
+            i+=1
+    f = open(os.path.join(newpath,"other.csv"),'w')
+    f.write(other)
+    f.close
+    
 def check(cleared,threshold):#cleared czyli dane z pliku przepuszczone przez def cleared, threshold po osiągnięciu błędu o tej wartości ten zostaje zlogowany i zwrócony
     notaccepted=[]
     dx=[]
@@ -103,11 +128,11 @@ for t in cleared:
     
 print("saved")
 # zamiana koordynatów na kąty
-for t in saved:
-    getDegrees([0,0,0],t)
+#for t in saved:
+#    getDegrees([0,0,0],t)
 
 #sprawdzenie omylności algorytmu
 #print(check(cleared,0.001))
 
 #zapisanie do segmentów
-#segmentSave(saved,30)
+segmentSave(saved,30,5)
